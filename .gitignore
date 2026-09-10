@@ -1,0 +1,52 @@
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# ---------- Segredos: NUNCA versionar ----------
+# kubeconfig dá acesso total ao cluster; token de API idem
+kubeconfig
+k3s.yaml
+.kube/
+*.pem
+*.key
+*.crt
+.env
+.env.*
+secret*.yaml
+*token*
+
+# ---------- Dados brutos ----------
+# séries temporais geradas são grandes e reprodutíveis pelos scripts;
+# se quiser versionar uma amostra pequena, use: git add -f dados/amostra.csv
+dados/**/*.csv
+dados/**/*.parquet
+dados/**/*.jsonl
+
+# ---------- Modelos treinados ----------
+modelos/**/*.h5
+modelos/**/*.keras
+modelos/**/*.pt
+modelos/**/*.pth
+modelos/**/*.pkl
+modelos/**/*.joblib
+modelos/**/*.onnx
+
+# ---------- Saídas de experimento ----------
+experimentos/resultados/**
+!experimentos/resultados/.gitkeep
+*.log
+prometheus_data/
+grafana_data/
+
+# ---------- Editor e sistema ----------
+.vscode/*
+!.vscode/settings.json
+.idea/
+*.swp
+*~
+.DS_Store
