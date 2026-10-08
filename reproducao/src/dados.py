@@ -7,12 +7,34 @@ HORIZONTE = 1     # prever 1 passo à frente
 
 
 def carregar(caminho: str):
-    ts, y = [], []
+    """Lê o CSV. A coluna 'valido' (opcional) marca minutos em que NÃO houve medição
+    — por exemplo, os dois dias em que o servidor da NASA ficou fora do ar por causa
+    do furacão Erin. Zero ali não é 'tráfego zero', é ausência de dado."""
+    ts, y, ok = [], [], []
     with open(caminho, encoding="utf-8") as f:
         for linha in csv.DictReader(f):
             ts.append(linha["timestamp"])
             y.append(float(linha["requests_per_minute"]))
-    return np.array(ts), np.array(y, dtype=np.float64)
+            ok.append(int(linha.get("valido", 1)))
+    return np.array(ts), np.array(y, dtype=np.float64), np.array(ok, dtype=bool)
+
+
+def maior_trecho_valido(valido: np.ndarray):
+    """Devolve (inicio, fim) do maior intervalo contínuo de dados válidos."""
+    melhor = (0, 0)
+    i = 0
+    n = len(valido)
+    while i < n:
+        if valido[i]:
+            j = i
+            while j < n and valido[j]:
+                j += 1
+            if j - i > melhor[1] - melhor[0]:
+                melhor = (i, j)
+            i = j
+        else:
+            i += 1
+    return melhor
 
 
 def janelas(serie: np.ndarray, janela: int = JANELA, horizonte: int = HORIZONTE):
@@ -46,7 +68,15 @@ class Normalizador:
 
 def preparar(caminho: str, fracao_treino: float = 0.7):
     """Divisão TEMPORAL: os primeiros 70% para treino, o resto para teste."""
-    ts, serie = carregar(caminho)
+    ts, serie, valido = carregar(caminho)
+
+    if not valido.all():                      # descarta a janela sem medição
+        a, b = maior_trecho_valido(valido)
+        descartados = len(serie) - (b - a)
+        print(f"    lacuna de medição: {descartados} minutos descartados "
+              f"(usando o maior trecho contínuo: {b - a} minutos)")
+        ts, serie = ts[a:b], serie[a:b]
+
     corte = int(len(serie) * fracao_treino)
 
     norm = Normalizador().ajustar(serie[:corte])

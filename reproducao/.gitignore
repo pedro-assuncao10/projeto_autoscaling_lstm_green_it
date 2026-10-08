@@ -3,3 +3,6 @@ __pycache__/
 dados/trace_sintetico.csv
 resultados/*
 !resultados/.gitkeep
+dados/brutos/
+dados/nasa_1min.csv
+dados/fifa_1min.csv
