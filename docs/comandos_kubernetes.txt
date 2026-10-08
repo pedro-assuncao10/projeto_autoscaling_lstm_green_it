@@ -1,0 +1,192 @@
+===============================================================================
+ GUIA RÁPIDO DE COMANDOS — KUBERNETES (kubectl) E KIND
+ Projeto: autoscaling sustentável em Kubernetes
+===============================================================================
+
+ Regra geral da sintaxe:
+
+     kubectl <verbo> <tipo-de-objeto> <nome> [opções]
+              |         |                |
+              |         |                +-- qual (ex.: web)
+              |         +------------------- o quê (pod, deployment, service)
+              +----------------------------- a ação (get, create, delete)
+
+ Tipos que você mais vai usar:
+     pod          a menor unidade executável (o container rodando)
+     deployment   quem garante N réplicas de um pod e cuida das atualizações
+     service      o endereço fixo que distribui as requisições entre os pods
+     hpa          o autoscaler reativo nativo
+     node         a máquina do cluster
+
+
+===============================================================================
+ 1. VER  (o que está acontecendo)
+===============================================================================
+
+ kubectl get nodes                    # as máquinas do cluster
+ kubectl get pods                     # os pods rodando
+ kubectl get pods -o wide             # idem, com IP e em qual nó está
+ kubectl get deployments              # quantas réplicas desejadas x prontas
+ kubectl get services                 # os endereços fixos
+ kubectl get hpa                      # os autoscalers e o uso atual
+ kubectl get all                      # tudo de uma vez
+
+ kubectl get pods -w                  # fica ATUALIZANDO na tela (Ctrl+C sai)
+                                      # ótimo para ver réplicas nascendo
+
+ kubectl describe pod <nome>          # detalhes + histórico de eventos
+                                      # é AQUI que se descobre por que algo falhou
+
+ kubectl logs <nome-do-pod>           # a saída da aplicação
+ kubectl logs -f <nome-do-pod>        # acompanha ao vivo (como tail -f)
+ kubectl logs <nome-do-pod> --previous  # log do container que morreu
+
+ kubectl top nodes                    # CPU/memória por máquina  ] exigem o
+ kubectl top pods                     # CPU/memória por pod      ] metrics-server
+
+ kubectl get pods -A                  # -A = todos os namespaces, inclusive os
+                                      # do próprio Kubernetes (kube-system)
+
+
+===============================================================================
+ 2. CRIAR
+===============================================================================
+
+ # jeito rápido, digitando na linha de comando:
+ kubectl create deployment web --image=traefik/whoami --replicas=3
+ kubectl expose deployment web --port=80        # cria o Service do deployment
+
+ # jeito de verdade (o que vai para a dissertação): a partir de um arquivo YAML
+ kubectl apply -f arquivo.yaml        # cria OU atualiza — é o comando principal
+ kubectl apply -f pasta/              # aplica todos os arquivos da pasta
+
+ # gerar o YAML sem criar nada, para editar e versionar no git:
+ kubectl create deployment web --image=traefik/whoami \
+     --dry-run=client -o yaml > deployment.yaml
+
+ DICA: prefira sempre `apply -f`. O YAML no git é o que torna o seu
+ experimento reprodutível por outra pessoa — exigência da dissertação.
+
+
+===============================================================================
+ 3. ALTERAR
+===============================================================================
+
+ kubectl scale deployment web --replicas=6      # <<< O COMANDO DA SUA PESQUISA
+                                                # é exatamente isto que o seu
+                                                # controlador Python vai fazer,
+                                                # só que na hora certa
+
+ kubectl set image deployment/web whoami=traefik/whoami:v1.10   # trocar a versão
+ kubectl rollout status deployment/web          # acompanhar a atualização
+ kubectl rollout undo deployment/web            # voltar para a versão anterior
+ kubectl rollout restart deployment/web         # reiniciar todos os pods
+
+ kubectl edit deployment web                    # abre o YAML no editor
+                                                # (bom para explorar, ruim para
+                                                #  reproduzir — não deixa rastro)
+
+
+===============================================================================
+ 4. REMOVER
+===============================================================================
+
+ kubectl delete pod <nome>            # some... e o Deployment cria outro no
+                                      # lugar! É assim que ele funciona.
+                                      # Bom teste: apague um e veja renascer.
+
+ kubectl delete deployment web        # aí sim os pods somem de vez
+ kubectl delete service web
+ kubectl delete -f arquivo.yaml       # remove o que aquele arquivo criou
+
+ kubectl delete pods --all            # todos os pods do namespace atual
+ kubectl scale deployment web --replicas=0      # zera sem apagar a definição
+
+
+===============================================================================
+ 5. ENTRAR E ACESSAR
+===============================================================================
+
+ kubectl exec -it <pod> -- /bin/sh    # abre um shell DENTRO do container
+                                      # (use bash se a imagem tiver)
+
+ kubectl port-forward service/web 8080:80
+     # liga a porta 8080 da sua máquina à porta 80 do Service.
+     # Depois é só abrir http://localhost:8080 no navegador.
+     # Fica travado no terminal; Ctrl+C encerra.
+
+ # testar por dentro do cluster, sem expor nada:
+ kubectl run cliente --rm -i --restart=Never --image=busybox:1.36 -- \
+     wget -qO- http://web/
+
+
+===============================================================================
+ 6. O CLUSTER (kind)
+===============================================================================
+
+ kind create cluster --name green     # cria
+ kind get clusters                    # lista
+ kind delete cluster --name green     # apaga TUDO (o cluster inteiro)
+ kubectl cluster-info                 # onde estou conectado?
+ kubectl config get-contexts          # todos os clusters conhecidos
+ kubectl config use-context kind-green   # trocar de cluster
+
+ CUIDADO: `kind delete` apaga o cluster inteiro sem confirmar.
+ Como tudo está em YAML no git, recriar é rápido — mais um motivo para
+ usar `apply -f` em vez de digitar comandos soltos.
+
+
+===============================================================================
+ 7. ATALHOS QUE POUPAM DIGITAÇÃO
+===============================================================================
+
+ po = pods        deploy = deployments      svc = services      no = nodes
+
+     kubectl get po
+     kubectl get deploy
+
+ Apelido permanente (coloque no fim do ~/.bashrc):
+
+     alias k=kubectl
+     source <(kubectl completion bash)        # completar com TAB
+     complete -o default -F __start_kubectl k
+
+ Depois: `k get po` e o TAB completa nomes de pod.
+
+
+===============================================================================
+ 8. O DIA A DIA DA SUA PESQUISA
+===============================================================================
+
+ # ver as réplicas subirem em tempo real enquanto a carga roda:
+ kubectl get pods -w
+
+ # em outro terminal, o autoscaler decidindo:
+ kubectl get hpa -w
+
+ # quantas réplicas AGORA (para registrar junto da medição de energia):
+ kubectl get deployment web -o jsonpath='{.status.readyReplicas}'
+
+ # histórico de decisões de escala (o HPA registra aqui):
+ kubectl describe hpa web | tail -20
+
+ # eventos do cluster em ordem de tempo — por que um pod demorou a subir:
+ kubectl get events --sort-by=.lastTimestamp | tail -20
+
+
+===============================================================================
+ SE ALGO DER ERRADO
+===============================================================================
+
+ 1. kubectl get pods              -> olhe a coluna STATUS
+ 2. kubectl describe pod <nome>   -> leia os EVENTOS no final
+ 3. kubectl logs <nome>           -> o que a aplicação disse
+
+ Status mais comuns:
+   Pending           não achou máquina com recursos livres (ou falta CPU/RAM)
+   ImagePullBackOff  não conseguiu baixar a imagem (nome errado? sem rede?)
+   CrashLoopBackOff  a aplicação sobe e morre em seguida -> veja os logs
+   Running           rodando, mas veja a coluna READY (1/1 = pronto de verdade)
+   OOMKilled         estourou o limite de memória
+
+===============================================================================

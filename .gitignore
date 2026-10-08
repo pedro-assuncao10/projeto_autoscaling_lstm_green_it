@@ -50,3 +50,8 @@ grafana_data/
 *.swp
 *~
 .DS_Store
+
+# ---------- PDFs de artigos ----------
+# Não redistribuir: licenças variadas e, no caso do IEEE, cópia licenciada pela UFMA.
+# Os resumos em Markdown (produção própria) continuam versionados.
+*.pdf
