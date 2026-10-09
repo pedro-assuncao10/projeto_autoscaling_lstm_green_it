@@ -6,3 +6,4 @@ resultados/*
 dados/brutos/
 dados/nasa_1min.csv
 dados/fifa_1min.csv
+dados/wikipedia_*.csv

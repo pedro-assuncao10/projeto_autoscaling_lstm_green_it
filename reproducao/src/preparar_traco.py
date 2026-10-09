@@ -25,8 +25,10 @@ MESES = {m: i + 1 for i, m in enumerate(
 
 # Furacão Erin: o servidor da NASA ficou fora do ar neste intervalo.
 # Os minutos aqui dentro NÃO são "tráfego zero" — são ausência de medição.
-ERIN_INI = datetime(1995, 8, 1, 14, 52, 1, tzinfo=timezone.utc)
-ERIN_FIM = datetime(1995, 8, 3, 4, 36, 13, tzinfo=timezone.utc)
+# O Internet Traffic Archive dá o horário LOCAL do log (-0400); a série é em UTC.
+EDT = timezone(timedelta(hours=-4))
+ERIN_INI = datetime(1995, 8, 1, 14, 52, 1, tzinfo=EDT)    # 18:52:01 UTC
+ERIN_FIM = datetime(1995, 8, 3, 4, 36, 13, tzinfo=EDT)    # 08:36:13 UTC
 
 
 def minuto(dt: datetime) -> datetime:
