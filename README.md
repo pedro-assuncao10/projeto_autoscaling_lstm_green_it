@@ -5,6 +5,9 @@ Autoscaling preditivo consciente de energia, com adaptação de modelos via *Tra
 
 **Mestrando:** Pedro Assunção · São Luís — MA · 2026
 
+> **Comece por [docs/CONTEXTO.md](docs/CONTEXTO.md)**: estado atual, decisões, algoritmo
+> proposto, próximos passos e como montar o ambiente em outra máquina.
+
 ---
 
 ## Estrutura
